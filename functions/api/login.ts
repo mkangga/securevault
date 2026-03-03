@@ -17,7 +17,7 @@ export const onRequestPost = async (context) => {
     const user = rows[0];
 
     if (!user) {
-      return new Response(JSON.stringify({ success: false, message: 'Invalid credentials' }), { status: 401 });
+      return new Response(JSON.stringify({ success: false, message: 'Invalid code or password' }), { status: 401 });
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
@@ -28,13 +28,13 @@ export const onRequestPost = async (context) => {
       
       return new Response(JSON.stringify({ 
         success: true, 
-        token: crypto.randomUUID(), // Note: crypto is available in Cloudflare Workers
-        username: user.username 
+        username: user.username,
+        gift_link: user.gift_link // Return the gift link
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
     } else {
-      return new Response(JSON.stringify({ success: false, message: 'Invalid credentials' }), { status: 401 });
+      return new Response(JSON.stringify({ success: false, message: 'Invalid code or password' }), { status: 401 });
     }
   } catch (error) {
     return new Response(JSON.stringify({ success: false, message: 'Internal server error: ' + error.message }), { status: 500 });

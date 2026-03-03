@@ -49,7 +49,15 @@ const MAX_ATTEMPTS = 5;
 
 // Register Endpoint
 app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, gift_link, admin_secret } = req.body;
+
+  // 1. SECURITY CHECK
+  // Default 'rahasia123' for local dev if env not set
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret !== validSecret) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: Wrong Admin Secret' });
+  }
 
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password required' });

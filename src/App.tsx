@@ -3,33 +3,35 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lock, Unlock, ShieldCheck, AlertCircle, Loader2, Terminal, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Gift, Loader2, KeyRound, Sparkles, ExternalLink, Settings } from 'lucide-react';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoginMode, setIsLoginMode] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [giftLink, setGiftLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [shake, setShake] = useState(0);
-  const [currentUser, setCurrentUser] = useState('');
+  const [isBoxOpen, setIsBoxOpen] = useState(false);
+  
+  // Admin Mode State (Hidden)
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminPin, setAdminPin] = useState('');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminLink, setAdminLink] = useState('');
+  const [adminMsg, setAdminMsg] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) return;
 
     setIsLoading(true);
     setError('');
-    setSuccessMsg('');
-
-    const endpoint = isLoginMode ? '/api/login' : '/api/register';
 
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -38,17 +40,10 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (isLoginMode) {
-          setIsAuthenticated(true);
-          setCurrentUser(data.username);
-        } else {
-          setSuccessMsg('Registration successful! Please login.');
-          setIsLoginMode(true);
-          setPassword('');
-        }
+        setIsAuthenticated(true);
+        setGiftLink(data.gift_link);
       } else {
-        setError(data.message || 'Operation failed');
-        setShake(prev => prev + 1);
+        setError(data.message || 'Invalid code or password');
       }
     } catch (err) {
       setError('Connection error. Please try again.');
@@ -57,206 +52,312 @@ export default function App() {
     }
   };
 
+  const handleAdminAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    // We don't validate client-side for security, we just store it to send to server
+    // But for UX, we can check if it's not empty
+    if (adminPin) {
+      setIsAdminAuthenticated(true);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setAdminMsg('');
+    
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          username, 
+          password, 
+          gift_link: adminLink,
+          admin_secret: adminPin // Send the PIN as secret
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAdminMsg('Gift created! Username: ' + username);
+        setUsername('');
+        setPassword('');
+        setAdminLink('');
+      } else {
+        setAdminMsg('Error: ' + data.message);
+        if (res.status === 401) {
+             setIsAdminAuthenticated(false); // Reset if wrong password
+             setAdminPin('');
+        }
+      }
+    } catch (err) {
+      setAdminMsg('Failed to create gift');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans overflow-hidden relative selection:bg-emerald-500/30">
-      {/* Background Atmosphere */}
+    <div className="min-h-screen bg-[#1a0b2e] text-white font-sans overflow-hidden relative selection:bg-purple-500/30">
+      {/* Magical Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-emerald-900/20 blur-[120px] rounded-full mix-blend-screen" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 blur-[120px] rounded-full mix-blend-screen" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(120,50,255,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 brightness-100 contrast-150" />
+        {/* Floating particles */}
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-yellow-200 rounded-full"
+            initial={{ 
+              x: Math.random() * window.innerWidth, 
+              y: Math.random() * window.innerHeight,
+              opacity: 0 
+            }}
+            animate={{ 
+              y: [null, Math.random() * -100],
+              opacity: [0, 1, 0],
+            }}
+            transition={{ 
+              duration: 3 + Math.random() * 5, 
+              repeat: Infinity,
+              delay: Math.random() * 5
+            }}
+          />
+        ))}
       </div>
 
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <AnimatePresence mode="wait">
           {!isAuthenticated ? (
             <motion.div
-              key="auth-card"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-md"
+              key="login"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+              className="w-full max-w-sm"
             >
-              <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative overflow-hidden group">
-                {/* Scanning line effect */}
-                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent -translate-x-full group-hover:animate-[scan_3s_ease-in-out_infinite]" />
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-[0_0_50px_-10px_rgba(139,92,246,0.3)] relative overflow-hidden">
                 
-                <div className="flex flex-col items-center mb-8">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-[0_0_30px_-10px_rgba(16,185,129,0.3)]">
-                    <Lock className="w-6 h-6 text-emerald-400" />
-                  </div>
-                  <h1 className="text-2xl font-medium tracking-tight text-white">Secure Vault</h1>
-                  <p className="text-white/40 text-sm mt-2 font-mono">Restricted Access // Level 5</p>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex bg-white/5 rounded-lg p-1 mb-6">
-                  <button
-                    onClick={() => { setIsLoginMode(true); setError(''); setSuccessMsg(''); }}
-                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${isLoginMode ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}
-                  >
-                    LOGIN
-                  </button>
-                  <button
-                    onClick={() => { setIsLoginMode(false); setError(''); setSuccessMsg(''); }}
-                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${!isLoginMode ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}
-                  >
-                    REGISTER
-                  </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Header */}
+                <div className="text-center mb-8">
                   <motion.div 
-                    animate={{ x: shake % 2 === 0 ? 0 : [-10, 10, -10, 10, 0] }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 15 }}
-                    className="space-y-4"
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                    className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg transform rotate-3"
                   >
-                    <div className="relative group/input">
-                      <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-white/20 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-mono tracking-wide"
-                        placeholder="USERNAME"
-                      />
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within/input:text-emerald-400 transition-colors" />
-                    </div>
-
-                    <div className="relative group/input">
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-white/20 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-mono tracking-widest"
-                        placeholder="PASSWORD"
-                      />
-                      <Terminal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within/input:text-emerald-400 transition-colors" />
-                    </div>
+                    <Gift className="w-10 h-10 text-white" />
                   </motion.div>
-
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex items-center gap-2 text-red-400 text-sm font-mono bg-red-500/10 py-2 px-3 rounded-lg border border-red-500/20"
-                      >
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        {error}
-                      </motion.div>
-                    )}
-                    {successMsg && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex items-center gap-2 text-emerald-400 text-sm font-mono bg-emerald-500/10 py-2 px-3 rounded-lg border border-emerald-500/20"
-                      >
-                        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                        {successMsg}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isLoading}
-                    className="w-full bg-white text-black font-medium py-3 rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group/btn"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>
-                        <span>{isLoginMode ? 'AUTHENTICATE' : 'INITIALIZE ID'}</span>
-                        <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full hover:animate-[shimmer_1s_infinite]" />
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                <div className="mt-6 text-center">
-                  <p className="text-[10px] text-white/20 font-mono uppercase tracking-widest">
-                    Secured by Bcrypt Hashing
-                    <br />
-                    IP: {`192.168.X.X`}
-                  </p>
+                  <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Mystery Gift</h1>
+                  <p className="text-purple-200 text-sm">Enter your secret code to reveal your prize</p>
                 </div>
+
+                {/* Login Form */}
+                {!isAdminMode ? (
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-white/30 focus:outline-none focus:border-purple-400 focus:bg-black/30 transition-all font-medium"
+                          placeholder="Username / Code"
+                        />
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-purple-400 transition-colors" />
+                      </div>
+
+                      <div className="relative group">
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-white/30 focus:outline-none focus:border-purple-400 focus:bg-black/30 transition-all font-medium"
+                          placeholder="Secret Password"
+                        />
+                        <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-purple-400 transition-colors" />
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="text-red-300 text-sm text-center bg-red-500/20 py-2 rounded-lg"
+                        >
+                          {error}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    >
+                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'OPEN GIFT'}
+                    </button>
+                  </form>
+                ) : (
+                  /* Admin Mode Container */
+                  <div className="space-y-4">
+                    <div className="text-center text-xs text-yellow-300 font-mono mb-2">ADMIN MODE</div>
+                    
+                    {!isAdminAuthenticated ? (
+                      /* 1. Admin PIN Entry */
+                      <form onSubmit={handleAdminAuth} className="space-y-3">
+                         <p className="text-xs text-center text-white/60">Enter Admin Secret to continue</p>
+                         <input
+                          type="password"
+                          value={adminPin}
+                          onChange={(e) => setAdminPin(e.target.value)}
+                          className="w-full bg-black/40 border border-yellow-500/50 rounded-lg px-3 py-2 text-sm text-center tracking-widest"
+                          placeholder="ADMIN SECRET"
+                          autoFocus
+                        />
+                        <button type="submit" className="w-full bg-yellow-600/50 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg text-sm transition-colors">
+                          UNLOCK
+                        </button>
+                      </form>
+                    ) : (
+                      /* 2. Create Gift Form (Only shown if PIN entered) */
+                      <form onSubmit={handleRegister} className="space-y-3">
+                        <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 mb-2">
+                           <p className="text-[10px] text-yellow-200/70 text-center mb-2">CREATE NEW GIFT</p>
+                           <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2"
+                            placeholder="New Username"
+                          />
+                          <input
+                            type="text"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2"
+                            placeholder="New Password"
+                          />
+                          <input
+                            type="text"
+                            value={adminLink}
+                            onChange={(e) => setAdminLink(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                            placeholder="Gift Link"
+                          />
+                        </div>
+                        
+                        <button type="submit" className="w-full bg-yellow-600 text-black font-bold py-2 rounded-lg text-sm hover:bg-yellow-500 transition-colors">
+                          CREATE GIFT
+                        </button>
+                        {adminMsg && <div className="text-xs text-center text-white bg-black/20 p-2 rounded">{adminMsg}</div>}
+                      </form>
+                    )}
+
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setIsAdminMode(false);
+                        setIsAdminAuthenticated(false);
+                        setAdminPin('');
+                        setAdminMsg('');
+                      }} 
+                      className="w-full text-xs text-white/30 hover:text-white transition-colors mt-2"
+                    >
+                      Exit Admin Mode
+                    </button>
+                  </div>
+                )}
+
+                {/* Secret Admin Trigger */}
+                {!isAdminMode && (
+                  <div className="mt-6 flex justify-center">
+                    <button 
+                      onClick={() => setIsAdminMode(true)} 
+                      className="w-8 h-1 bg-white/5 rounded-full hover:bg-white/20 transition-colors"
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           ) : (
             <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-4xl"
+              key="gift-reveal"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center w-full max-w-md"
             >
-              <div className="bg-black/60 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="border-b border-white/10 p-6 flex items-center justify-between bg-white/5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center border border-emerald-500/30">
-                      <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-medium text-white">Access Granted</h2>
-                      <p className="text-xs text-emerald-400 font-mono flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        SECURE CONNECTION ESTABLISHED
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-white/40 text-sm font-mono hidden sm:inline-block">USER: {currentUser.toUpperCase()}</span>
-                    <button 
-                      onClick={() => { setIsAuthenticated(false); setUsername(''); setPassword(''); }}
-                      className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-mono border border-white/10 transition-colors"
-                    >
-                      DISCONNECT
-                    </button>
-                  </div>
-                </div>
+              {!isBoxOpen ? (
+                <motion.div
+                  className="cursor-pointer"
+                  onClick={() => setIsBoxOpen(true)}
+                  whileHover={{ scale: 1.05, rotate: [0, -2, 2, 0] }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div 
+                    className="w-64 h-64 mx-auto bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl shadow-[0_0_80px_rgba(168,85,247,0.6)] flex items-center justify-center relative z-10"
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Gift className="w-32 h-32 text-white" />
+                    <div className="absolute inset-0 border-4 border-yellow-400/30 rounded-3xl" />
+                    <div className="absolute top-1/2 left-0 w-full h-8 bg-yellow-400/20 -translate-y-1/2" />
+                    <div className="absolute top-0 left-1/2 w-8 h-full bg-yellow-400/20 -translate-x-1/2" />
+                  </motion.div>
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="mt-8 text-2xl font-bold text-white animate-pulse"
+                  >
+                    TAP TO OPEN!
+                  </motion.p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", bounce: 0.5 }}
+                  className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl"
+                >
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className="w-20 h-20 bg-green-500 rounded-full mx-auto mb-6 flex items-center justify-center shadow-lg"
+                  >
+                    <span className="text-4xl">🎉</span>
+                  </motion.div>
+                  
+                  <h2 className="text-3xl font-bold text-white mb-2">CONGRATULATIONS!</h2>
+                  <p className="text-purple-200 mb-8">You've unlocked a special gift from {username}.</p>
+                  
+                  <motion.a
+                    href={giftLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="block w-full bg-[#118EEA] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#0c7bc0] transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    CLAIM DANA KAGET
+                  </motion.a>
 
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-6">
-                    <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/30 transition-colors group">
-                      <h3 className="text-sm font-mono text-white/40 mb-2">PROJECT CODENAME</h3>
-                      <p className="text-2xl font-light text-white group-hover:text-emerald-400 transition-colors">Project Chimera</p>
-                    </div>
-                    
-                    <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/30 transition-colors">
-                      <h3 className="text-sm font-mono text-white/40 mb-4">SYSTEM STATUS</h3>
-                      <div className="space-y-3">
-                        {['Mainframe', 'Database', 'Proxy', 'Firewall'].map((item, i) => (
-                          <div key={item} className="flex items-center justify-between text-sm">
-                            <span className="text-white/70">{item}</span>
-                            <span className="text-emerald-400 font-mono">ONLINE</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-900/20 to-black border border-white/10 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-32 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
-                    <h3 className="text-sm font-mono text-emerald-400 mb-4">CLASSIFIED DATA</h3>
-                    <p className="text-white/80 leading-relaxed font-light">
-                      Welcome, Agent {currentUser}. Your credentials have been verified against our encrypted database using Bcrypt.
-                    </p>
-                    <div className="mt-8 p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-xs text-white/50 overflow-x-auto">
-                      <code>
-                        $ initiating handshake...<br/>
-                        $ verifying hash...<br/>
-                        $ user: {currentUser}<br/>
-                        $ access_token: generated<br/>
-                        $ session_id: {Math.random().toString(36).substring(7)}
-                      </code>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  <button 
+                    onClick={() => {
+                      setIsAuthenticated(false);
+                      setIsBoxOpen(false);
+                      setUsername('');
+                      setPassword('');
+                    }}
+                    className="mt-6 text-sm text-white/40 hover:text-white transition-colors"
+                  >
+                    Close & Logout
+                  </button>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

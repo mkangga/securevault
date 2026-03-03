@@ -334,7 +334,7 @@ export default function App() {
                   <p className="text-purple-200 mb-8">You've unlocked a special gift from {username}.</p>
                   
                   <motion.a
-                    href={giftLink}
+                    href={giftLink.startsWith('http') ? giftLink : `https://${giftLink}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     whileHover={{ scale: 1.05 }}
@@ -342,7 +342,7 @@ export default function App() {
                     className="block w-full bg-[#118EEA] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#0c7bc0] transition-colors flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-5 h-5" />
-                    CLAIM DANA KAGET
+                    Claim Gift
                   </motion.a>
 
                   <button 

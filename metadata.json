@@ -1,0 +1,5 @@
+{
+  "name": "SecureVault",
+  "description": "A secure, password-protected website with server-side validation and interactive UI.",
+  "requestFramePermissions": []
+}

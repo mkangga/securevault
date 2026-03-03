@@ -43,10 +43,10 @@ export default function App() {
         setIsAuthenticated(true);
         setGiftLink(data.gift_link);
       } else {
-        setError(data.message || 'Invalid code or password');
+        setError(data.message || 'Kode atau password salah');
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      setError('Koneksi error. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +79,7 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        setAdminMsg('Gift created! Username: ' + username);
+        setAdminMsg('Hadiah dibuat! Username: ' + username);
         setUsername('');
         setPassword('');
         setAdminLink('');
@@ -91,7 +91,7 @@ export default function App() {
         }
       }
     } catch (err) {
-      setAdminMsg('Failed to create gift');
+      setAdminMsg('Gagal membuat hadiah');
     } finally {
       setIsLoading(false);
     }
@@ -147,8 +147,8 @@ export default function App() {
                   >
                     <Gift className="w-10 h-10 text-white" />
                   </motion.div>
-                  <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Mystery Gift</h1>
-                  <p className="text-purple-200 text-sm">Enter your secret code to reveal your prize</p>
+                  <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Hadiah Misterius</h1>
+                  <p className="text-purple-200 text-sm">Masukkan kode rahasia untuk membuka hadiahmu</p>
                 </div>
 
                 {/* Login Form */}
@@ -161,7 +161,7 @@ export default function App() {
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
                           className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-white/30 focus:outline-none focus:border-purple-400 focus:bg-black/30 transition-all font-medium"
-                          placeholder="Username / Code"
+                          placeholder="Username / Kode"
                         />
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-purple-400 transition-colors" />
                       </div>
@@ -172,7 +172,7 @@ export default function App() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-white/30 focus:outline-none focus:border-purple-400 focus:bg-black/30 transition-all font-medium"
-                          placeholder="Secret Password"
+                          placeholder="Password Rahasia"
                         />
                         <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-purple-400 transition-colors" />
                       </div>
@@ -196,60 +196,60 @@ export default function App() {
                       disabled={isLoading}
                       className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
-                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'OPEN GIFT'}
+                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'BUKA HADIAH'}
                     </button>
                   </form>
                 ) : (
                   /* Admin Mode Container */
                   <div className="space-y-4">
-                    <div className="text-center text-xs text-yellow-300 font-mono mb-2">ADMIN MODE</div>
+                    <div className="text-center text-xs text-yellow-300 font-mono mb-2">MODE ADMIN</div>
                     
                     {!isAdminAuthenticated ? (
                       /* 1. Admin PIN Entry */
                       <form onSubmit={handleAdminAuth} className="space-y-3">
-                         <p className="text-xs text-center text-white/60">Enter Admin Secret to continue</p>
+                         <p className="text-xs text-center text-white/60">Masukkan Rahasia Admin untuk lanjut</p>
                          <input
                           type="password"
                           value={adminPin}
                           onChange={(e) => setAdminPin(e.target.value)}
                           className="w-full bg-black/40 border border-yellow-500/50 rounded-lg px-3 py-2 text-sm text-center tracking-widest"
-                          placeholder="ADMIN SECRET"
+                          placeholder="RAHASIA ADMIN"
                           autoFocus
                         />
                         <button type="submit" className="w-full bg-yellow-600/50 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg text-sm transition-colors">
-                          UNLOCK
+                          BUKA KUNCI
                         </button>
                       </form>
                     ) : (
                       /* 2. Create Gift Form (Only shown if PIN entered) */
                       <form onSubmit={handleRegister} className="space-y-3">
                         <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 mb-2">
-                           <p className="text-[10px] text-yellow-200/70 text-center mb-2">CREATE NEW GIFT</p>
+                           <p className="text-[10px] text-yellow-200/70 text-center mb-2">BUAT HADIAH BARU</p>
                            <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2"
-                            placeholder="New Username"
+                            placeholder="Username Baru"
                           />
                           <input
                             type="text"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2"
-                            placeholder="New Password"
+                            placeholder="Password Baru"
                           />
                           <input
                             type="text"
                             value={adminLink}
                             onChange={(e) => setAdminLink(e.target.value)}
                             className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm"
-                            placeholder="Gift Link"
+                            placeholder="Link Hadiah"
                           />
                         </div>
                         
                         <button type="submit" className="w-full bg-yellow-600 text-black font-bold py-2 rounded-lg text-sm hover:bg-yellow-500 transition-colors">
-                          CREATE GIFT
+                          BUAT HADIAH
                         </button>
                         {adminMsg && <div className="text-xs text-center text-white bg-black/20 p-2 rounded">{adminMsg}</div>}
                       </form>
@@ -265,7 +265,7 @@ export default function App() {
                       }} 
                       className="w-full text-xs text-white/30 hover:text-white transition-colors mt-2"
                     >
-                      Exit Admin Mode
+                      Keluar Mode Admin
                     </button>
                   </div>
                 )}
@@ -311,7 +311,7 @@ export default function App() {
                     transition={{ delay: 0.5 }}
                     className="mt-8 text-2xl font-bold text-white animate-pulse"
                   >
-                    TAP TO OPEN!
+                    KETUK UNTUK BUKA!
                   </motion.p>
                 </motion.div>
               ) : (
@@ -330,8 +330,8 @@ export default function App() {
                     <span className="text-4xl">🎉</span>
                   </motion.div>
                   
-                  <h2 className="text-3xl font-bold text-white mb-2">CONGRATULATIONS!</h2>
-                  <p className="text-purple-200 mb-8">You've unlocked a special gift from {username}.</p>
+                  <h2 className="text-3xl font-bold text-white mb-2">SELAMAT!</h2>
+                  <p className="text-purple-200 mb-8">Kamu telah membuka hadiah spesial dari {username}.</p>
                   
                   <motion.a
                     href={giftLink.startsWith('http') ? giftLink : `https://${giftLink}`}
@@ -342,7 +342,7 @@ export default function App() {
                     className="block w-full bg-[#118EEA] text-white font-bold py-4 rounded-xl shadow-lg hover:bg-[#0c7bc0] transition-colors flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-5 h-5" />
-                    Claim Gift
+                    Klaim Hadiah
                   </motion.a>
 
                   <button 
@@ -354,13 +354,18 @@ export default function App() {
                     }}
                     className="mt-6 text-sm text-white/40 hover:text-white transition-colors"
                   >
-                    Close & Logout
+                    Tutup & Keluar
                   </button>
                 </motion.div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+      
+      {/* Footer */}
+      <div className="absolute bottom-4 left-0 w-full text-center z-20">
+        <p className="text-white/20 text-xs font-mono">by MKA</p>
       </div>
     </div>
   );

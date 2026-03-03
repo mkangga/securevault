@@ -49,6 +49,18 @@ const MAX_ATTEMPTS = 5;
 
 // API Routes
 
+// Verify Admin Secret Endpoint
+app.post('/api/verify-admin', (req, res) => {
+  const { admin_secret } = req.body;
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret === validSecret) {
+    return res.json({ success: true });
+  } else {
+    return res.status(401).json({ success: false, message: 'Invalid Admin Secret' });
+  }
+});
+
 // Register Endpoint
 app.post('/api/register', async (req, res) => {
   const { username, password, gift_link, admin_secret } = req.body;

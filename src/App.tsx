@@ -52,12 +52,26 @@ export default function App() {
     }
   };
 
-  const handleAdminAuth = (e: React.FormEvent) => {
+  const handleAdminAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    // We don't validate client-side for security, we just store it to send to server
-    // But for UX, we can check if it's not empty
-    if (adminPin) {
-      setIsAdminAuthenticated(true);
+    if (!adminPin) return;
+    
+    try {
+      const res = await fetch('/api/verify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_secret: adminPin }),
+      });
+      
+      if (res.ok) {
+        setIsAdminAuthenticated(true);
+        setAdminMsg('');
+      } else {
+        setAdminMsg('PIN Admin Salah!');
+        setAdminPin('');
+      }
+    } catch (err) {
+      setAdminMsg('Gagal verifikasi admin');
     }
   };
 
@@ -219,6 +233,7 @@ export default function App() {
                         <button type="submit" className="w-full bg-yellow-600/50 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg text-sm transition-colors">
                           BUKA KUNCI
                         </button>
+                        {adminMsg && <div className="text-xs text-center text-red-300 bg-red-500/20 p-2 rounded">{adminMsg}</div>}
                       </form>
                     ) : (
                       /* 2. Create Gift Form (Only shown if PIN entered) */

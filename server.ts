@@ -13,26 +13,13 @@ app.use(express.json());
 // Initialize Database Connection Pool
 // We use a connection pool to manage multiple concurrent requests efficiently.
 // The connection string comes from the environment variable DATABASE_URL.
-let pool: Pool;
-
-if (!process.env.DATABASE_URL) {
-  console.error('CRITICAL: DATABASE_URL is missing! Database features will not work.');
-  // Create a dummy pool that always fails gracefully
-  pool = {
-    query: async () => { throw new Error('Database not configured (missing DATABASE_URL)'); },
-    connect: async () => { throw new Error('Database not configured (missing DATABASE_URL)'); },
-  } as any;
-} else {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  });
-}
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Create Users Table if it doesn't exist
 const initDb = async () => {
-  if (!process.env.DATABASE_URL) return;
-  
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -41,20 +28,9 @@ const initDb = async () => {
         password_hash TEXT NOT NULL,
         gift_link TEXT,
         plain_password TEXT,
-        message TEXT,
-        theme_id TEXT DEFAULT 'default',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
-    // Add columns if they don't exist (migration)
-    try {
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS message TEXT`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_id TEXT DEFAULT 'default'`);
-    } catch (e) {
-      console.log('Migration note: Columns might already exist');
-    }
-    
     console.log('Database initialized successfully');
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -73,106 +49,6 @@ const MAX_ATTEMPTS = 5;
 
 // API Routes
 
-// Health Check Endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV,
-    db_connected: !!process.env.DATABASE_URL
-  });
-});
-
-// Debug Endpoint (Admin Only)
-app.post('/api/debug/status', async (req, res) => {
-  const { admin_secret } = req.body;
-  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
-  
-  if (admin_secret !== validSecret) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  try {
-    // Check DB Connection Info
-    const dbInfo = await pool.query('SELECT current_database(), inet_server_addr(), version()');
-    
-    // Check Table Schema
-    const schemaInfo = await pool.query(`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
-      WHERE table_name = 'users'
-    `);
-
-    // Check Recent Data (Raw)
-    const recentData = await pool.query('SELECT id, username, message, theme_id FROM users ORDER BY created_at DESC LIMIT 5');
-
-    return res.json({
-      success: true,
-      database: dbInfo.rows[0],
-      schema: schemaInfo.rows,
-      recent_data: recentData.rows,
-      env_check: {
-        has_db_url: !!process.env.DATABASE_URL,
-        node_env: process.env.NODE_ENV
-      }
-    });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Manual Migration Endpoint (Admin Only)
-app.post('/api/admin/migrate', async (req, res) => {
-  const { admin_secret } = req.body;
-  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
-  
-  if (admin_secret !== validSecret) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  try {
-    console.log('Starting migration...');
-    
-    // 1. Check current columns
-    const initialCols = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'users'
-    `);
-    console.log('Initial columns:', initialCols.rows.map(r => r.column_name));
-
-    // 2. Force add columns one by one with catch
-    try {
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS message TEXT`);
-      console.log('Added message column');
-    } catch (e: any) { console.log('Message col error:', e.message); }
-
-    try {
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_id TEXT DEFAULT 'default'`);
-      console.log('Added theme_id column');
-    } catch (e: any) { console.log('Theme col error:', e.message); }
-    
-    // 3. Verify columns again
-    const result = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'users'
-    `);
-    
-    const finalCols = result.rows.map(r => r.column_name);
-    console.log('Final columns:', finalCols);
-
-    return res.json({ 
-      success: true, 
-      message: 'Migration run successfully', 
-      columns: finalCols
-    });
-  } catch (error: any) {
-    console.error('Migration error:', error);
-    return res.status(500).json({ success: false, message: 'Migration failed: ' + error.message });
-  }
-});
-
 // Verify Admin Secret Endpoint
 app.post('/api/verify-admin', (req, res) => {
   const { admin_secret } = req.body;
@@ -187,8 +63,7 @@ app.post('/api/verify-admin', (req, res) => {
 
 // Register Endpoint
 app.post('/api/register', async (req, res) => {
-  const { username, password, gift_link, admin_secret, message, theme_id } = req.body;
-  console.log('Registering user:', { username, gift_link, message, theme_id }); // Debug log
+  const { username, password, gift_link, admin_secret } = req.body;
 
   // 1. SECURITY CHECK
   // Default 'rahasia123' for local dev if env not set
@@ -220,105 +95,14 @@ app.post('/api/register', async (req, res) => {
 
     // Insert user
     const link = gift_link || 'https://link.dana.id/kaget/default';
-    const msg = message || '';
-    const theme = theme_id || 'default';
-    
-    console.log('EXECUTING INSERT:', { username, link, msg, theme });
-
-    // Explicitly listing columns to avoid ambiguity
-    const queryText = `
-      INSERT INTO users (username, password_hash, gift_link, plain_password, message, theme_id) 
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, username, message, theme_id
-    `;
-    
-    const insertResult = await pool.query(queryText, [username, hash, link, password, msg, theme]);
-    console.log('INSERT RESULT:', insertResult.rows[0]);
+    await pool.query('INSERT INTO users (username, password_hash, gift_link, plain_password) VALUES ($1, $2, $3, $4)', [username, hash, link, password]);
 
     // Artificial delay for security feel
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    return res.json({ 
-      success: true, 
-      message: `User created! Msg: ${msg.substring(0,5)}..., Theme: ${theme}`,
-      debug_data: insertResult.rows[0]
-    });
+    return res.json({ success: true, message: 'Registration successful' });
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-// Get All Users (Admin Only)
-app.post('/api/admin/users', async (req, res) => {
-  const { admin_secret } = req.body;
-  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
-  
-  if (admin_secret !== validSecret) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  try {
-    const result = await pool.query('SELECT username, gift_link, plain_password as password, message, theme_id FROM users ORDER BY created_at DESC');
-    return res.json({ success: true, users: result.rows });
-  } catch (error) {
-    console.error('Fetch users error:', error);
-    return res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-// Update User (Admin Only)
-app.post('/api/admin/update-user', async (req, res) => {
-  const { admin_secret, original_username, username, password, gift_link, message, theme_id } = req.body;
-  console.log('Updating user:', { original_username, username, message, theme_id }); // Debug log
-
-  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
-  
-  if (admin_secret !== validSecret) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  try {
-    // Hash new password if provided
-    const saltRounds = 10;
-    const hash = await bcrypt.hash(password, saltRounds);
-
-    const msg = message || '';
-    const theme = theme_id || 'default';
-
-    console.log('EXECUTING UPDATE:', { original_username, username, msg, theme });
-
-    const updateQuery = `
-      UPDATE users 
-      SET username = $1, password_hash = $2, plain_password = $3, gift_link = $4, message = $5, theme_id = $6 
-      WHERE username = $7
-      RETURNING id, username, message, theme_id
-    `;
-
-    const updateResult = await pool.query(updateQuery, [username, hash, password, gift_link, msg, theme, original_username]);
-    console.log('UPDATE RESULT:', updateResult.rows[0]);
-
-    return res.json({ success: true, message: 'User updated successfully', debug_data: updateResult.rows[0] });
-  } catch (error) {
-    console.error('Update user error:', error);
-    return res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-// Delete User (Admin Only)
-app.post('/api/admin/delete-user', async (req, res) => {
-  const { admin_secret, username } = req.body;
-  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
-  
-  if (admin_secret !== validSecret) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  try {
-    await pool.query('DELETE FROM users WHERE username = $1', [username]);
-    return res.json({ success: true, message: 'User deleted successfully' });
-  } catch (error) {
-    console.error('Delete user error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -371,10 +155,7 @@ app.post('/api/login', async (req, res) => {
       return res.json({ 
         success: true, 
         token: crypto.randomUUID(),
-        username: user.username,
-        gift_link: user.gift_link,
-        message: user.message,
-        theme_id: user.theme_id
+        username: user.username 
       });
     } else {
       // Increment attempts

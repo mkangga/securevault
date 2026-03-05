@@ -28,9 +28,20 @@ const initDb = async () => {
         password_hash TEXT NOT NULL,
         gift_link TEXT,
         plain_password TEXT,
+        message TEXT,
+        theme_id TEXT DEFAULT 'default',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Add columns if they don't exist (migration)
+    try {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS message TEXT`);
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_id TEXT DEFAULT 'default'`);
+    } catch (e) {
+      console.log('Migration note: Columns might already exist');
+    }
+    
     console.log('Database initialized successfully');
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -63,7 +74,7 @@ app.post('/api/verify-admin', (req, res) => {
 
 // Register Endpoint
 app.post('/api/register', async (req, res) => {
-  const { username, password, gift_link, admin_secret } = req.body;
+  const { username, password, gift_link, admin_secret, message, theme_id } = req.body;
 
   // 1. SECURITY CHECK
   // Default 'rahasia123' for local dev if env not set
@@ -95,7 +106,13 @@ app.post('/api/register', async (req, res) => {
 
     // Insert user
     const link = gift_link || 'https://link.dana.id/kaget/default';
-    await pool.query('INSERT INTO users (username, password_hash, gift_link, plain_password) VALUES ($1, $2, $3, $4)', [username, hash, link, password]);
+    const msg = message || '';
+    const theme = theme_id || 'default';
+    
+    await pool.query(
+      'INSERT INTO users (username, password_hash, gift_link, plain_password, message, theme_id) VALUES ($1, $2, $3, $4, $5, $6)', 
+      [username, hash, link, password, msg, theme]
+    );
 
     // Artificial delay for security feel
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -103,6 +120,68 @@ app.post('/api/register', async (req, res) => {
     return res.json({ success: true, message: 'Registration successful' });
   } catch (error) {
     console.error('Registration error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Get All Users (Admin Only)
+app.post('/api/admin/users', async (req, res) => {
+  const { admin_secret } = req.body;
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret !== validSecret) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    const result = await pool.query('SELECT username, gift_link, plain_password as password, message, theme_id FROM users ORDER BY created_at DESC');
+    return res.json({ success: true, users: result.rows });
+  } catch (error) {
+    console.error('Fetch users error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Update User (Admin Only)
+app.post('/api/admin/update-user', async (req, res) => {
+  const { admin_secret, original_username, username, password, gift_link, message, theme_id } = req.body;
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret !== validSecret) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    // Hash new password if provided
+    const saltRounds = 10;
+    const hash = await bcrypt.hash(password, saltRounds);
+
+    await pool.query(
+      'UPDATE users SET username = $1, password_hash = $2, plain_password = $3, gift_link = $4, message = $5, theme_id = $6 WHERE username = $7',
+      [username, hash, password, gift_link, message, theme_id, original_username]
+    );
+
+    return res.json({ success: true, message: 'User updated successfully' });
+  } catch (error) {
+    console.error('Update user error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Delete User (Admin Only)
+app.post('/api/admin/delete-user', async (req, res) => {
+  const { admin_secret, username } = req.body;
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret !== validSecret) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    await pool.query('DELETE FROM users WHERE username = $1', [username]);
+    return res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -155,7 +234,10 @@ app.post('/api/login', async (req, res) => {
       return res.json({ 
         success: true, 
         token: crypto.randomUUID(),
-        username: user.username 
+        username: user.username,
+        gift_link: user.gift_link,
+        message: user.message,
+        theme_id: user.theme_id
       });
     } else {
       // Increment attempts

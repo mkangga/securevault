@@ -107,6 +107,7 @@ app.post('/api/verify-admin', (req, res) => {
 // Register Endpoint
 app.post('/api/register', async (req, res) => {
   const { username, password, gift_link, admin_secret, message, theme_id } = req.body;
+  console.log('Registering user:', { username, gift_link, message, theme_id }); // Debug log
 
   // 1. SECURITY CHECK
   // Default 'rahasia123' for local dev if env not set
@@ -177,6 +178,8 @@ app.post('/api/admin/users', async (req, res) => {
 // Update User (Admin Only)
 app.post('/api/admin/update-user', async (req, res) => {
   const { admin_secret, original_username, username, password, gift_link, message, theme_id } = req.body;
+  console.log('Updating user:', { original_username, username, message, theme_id }); // Debug log
+
   const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
   
   if (admin_secret !== validSecret) {
@@ -188,9 +191,12 @@ app.post('/api/admin/update-user', async (req, res) => {
     const saltRounds = 10;
     const hash = await bcrypt.hash(password, saltRounds);
 
+    const msg = message || '';
+    const theme = theme_id || 'default';
+
     await pool.query(
       'UPDATE users SET username = $1, password_hash = $2, plain_password = $3, gift_link = $4, message = $5, theme_id = $6 WHERE username = $7',
-      [username, hash, password, gift_link, message, theme_id, original_username]
+      [username, hash, password, gift_link, msg, theme, original_username]
     );
 
     return res.json({ success: true, message: 'User updated successfully' });

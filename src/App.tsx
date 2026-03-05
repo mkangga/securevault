@@ -548,10 +548,21 @@ export default function App() {
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ admin_secret: adminPin }),
                                 });
-                                const data = await res.json();
-                                alert(JSON.stringify(data, null, 2));
-                              } catch(e) {
-                                alert('Debug failed');
+                                
+                                if (res.status === 404) {
+                                  alert('Endpoint debug tidak ditemukan. Harap redeploy aplikasi Anda.');
+                                  return;
+                                }
+
+                                const text = await res.text();
+                                try {
+                                  const data = JSON.parse(text);
+                                  alert(JSON.stringify(data, null, 2));
+                                } catch (e) {
+                                  alert('Respon bukan JSON (mungkin error server/HTML): ' + text.substring(0, 100));
+                                }
+                              } catch(e: any) {
+                                alert('Debug failed: ' + e.message);
                               }
                             }}
                             className="w-full text-[10px] text-blue-400/50 hover:text-blue-400 transition-colors flex items-center justify-center gap-1"
@@ -559,6 +570,10 @@ export default function App() {
                             <Settings className="w-3 h-3" />
                             Check DB Connection
                           </button>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-white/10 text-[10px] text-center text-white/30">
+                          <p>App Version: v1.2 (Debug Enabled)</p>
+                          <p>Server: {window.location.hostname}</p>
                         </div>
                       </div>
                     )}

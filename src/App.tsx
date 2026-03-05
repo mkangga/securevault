@@ -195,6 +195,15 @@ export default function App() {
     e.preventDefault();
     setAdminMsg('');
     
+    // Debug Payload
+    console.log('Sending Payload:', {
+      username: newUsername,
+      password: newPassword,
+      gift_link: newGiftLink,
+      message: newMessage,
+      theme_id: selectedTheme
+    });
+
     if (editMode && editingUsername) {
       // Edit existing user
       try {

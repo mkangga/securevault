@@ -131,21 +131,41 @@ app.post('/api/admin/migrate', async (req, res) => {
   }
 
   try {
-    // Force add columns
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS message TEXT`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_id TEXT DEFAULT 'default'`);
+    console.log('Starting migration...');
     
-    // Check columns
+    // 1. Check current columns
+    const initialCols = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users'
+    `);
+    console.log('Initial columns:', initialCols.rows.map(r => r.column_name));
+
+    // 2. Force add columns one by one with catch
+    try {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS message TEXT`);
+      console.log('Added message column');
+    } catch (e: any) { console.log('Message col error:', e.message); }
+
+    try {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_id TEXT DEFAULT 'default'`);
+      console.log('Added theme_id column');
+    } catch (e: any) { console.log('Theme col error:', e.message); }
+    
+    // 3. Verify columns again
     const result = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'users'
     `);
     
+    const finalCols = result.rows.map(r => r.column_name);
+    console.log('Final columns:', finalCols);
+
     return res.json({ 
       success: true, 
       message: 'Migration run successfully', 
-      columns: result.rows.map(r => r.column_name) 
+      columns: finalCols
     });
   } catch (error: any) {
     console.error('Migration error:', error);

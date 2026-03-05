@@ -25,103 +25,6 @@ const Typewriter = ({ text, speed = 50, className }: { text: string; speed?: num
   return <p className={className}>{displayedText}</p>;
 };
 
-const ScratchCard = ({ width, height, onReveal, children, className }: { width: number; height: number; onReveal: () => void; children: React.ReactNode; className?: string }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isRevealed, setIsRevealed] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = width;
-    canvas.height = height;
-
-    // Fill with scratch layer
-    ctx.fillStyle = '#CCCCCC';
-    ctx.fillRect(0, 0, width, height);
-    
-    // Add text
-    ctx.fillStyle = '#666666';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('GOSOK DISINI!', width / 2, height / 2);
-
-    // Add noise
-    for (let i = 0; i < 500; i++) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
-        ctx.fillRect(Math.random() * width, Math.random() * height, 2, 2);
-    }
-  }, [width, height]);
-
-  const scratch = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing || isRevealed) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    
-    if ('touches' in e.nativeEvent) {
-      clientX = e.nativeEvent.touches[0].clientX;
-      clientY = e.nativeEvent.touches[0].clientY;
-    } else {
-      clientX = (e.nativeEvent as MouseEvent).clientX;
-      clientY = (e.nativeEvent as MouseEvent).clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.beginPath();
-    ctx.arc(x, y, 20, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Check reveal percentage occasionally
-    if (Math.random() > 0.8) {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        let transparentPixels = 0;
-        for (let i = 3; i < imageData.data.length; i += 4) {
-            if (imageData.data[i] === 0) transparentPixels++;
-        }
-        if (transparentPixels / (width * height) > 0.4) {
-            setIsRevealed(true);
-            onReveal();
-        }
-    }
-  };
-
-  return (
-    <div className={`relative ${className}`} style={{ width, height }}>
-       <div className="absolute inset-0 w-full h-full flex items-center justify-center z-0">
-        {children}
-      </div>
-      {!isRevealed && (
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 z-10 cursor-pointer touch-none rounded-xl"
-          onMouseDown={() => setIsDrawing(true)}
-          onMouseUp={() => setIsDrawing(false)}
-          onMouseLeave={() => setIsDrawing(false)}
-          onMouseMove={scratch}
-          onTouchStart={() => setIsDrawing(true)}
-          onTouchEnd={() => setIsDrawing(false)}
-          onTouchMove={scratch}
-        />
-      )}
-    </div>
-  );
-};
-
 // Types & Themes
 interface Theme {
   id: string;
@@ -160,7 +63,6 @@ export default function App() {
   
   // Gift State
   const [isBoxOpen, setIsBoxOpen] = useState(false);
-  const [isScratched, setIsScratched] = useState(false);
 
   // Admin State
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -647,33 +549,31 @@ export default function App() {
               className="text-center w-full max-w-md relative z-20"
             >
               {!isBoxOpen ? (
-                <div className="flex flex-col items-center justify-center">
-                  <ScratchCard 
-                    width={300} 
-                    height={300} 
-                    onReveal={() => {
-                      setIsScratched(true);
-                      setTimeout(() => setIsBoxOpen(true), 1000); // Delay slightly after scratch
-                    }}
-                    className="mx-auto mb-8"
+                <motion.div
+                  className="cursor-pointer"
+                  onClick={() => setIsBoxOpen(true)}
+                  whileHover={{ scale: 1.05, rotate: [0, -2, 2, 0] }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <motion.div 
+                    className="w-64 h-64 mx-auto bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl shadow-[0_0_80px_rgba(168,85,247,0.6)] flex items-center justify-center relative z-10"
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   >
-                     <div className="w-full h-full bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <Gift className="w-20 h-20 text-white animate-bounce" />
-                        <p className="absolute bottom-4 text-white font-bold text-sm">HADIAH DI DALAM!</p>
-                     </div>
-                  </ScratchCard>
-                  
-                  {!isScratched && (
-                    <motion.p 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="text-xl font-bold text-white animate-pulse"
-                    >
-                      GOSOK KARTU DI ATAS!
-                    </motion.p>
-                  )}
-                </div>
+                    <Gift className="w-32 h-32 text-white" />
+                    <div className="absolute inset-0 border-4 border-yellow-400/30 rounded-3xl" />
+                    <div className="absolute top-1/2 left-0 w-full h-8 bg-yellow-400/20 -translate-y-1/2" />
+                    <div className="absolute top-0 left-1/2 w-8 h-full bg-yellow-400/20 -translate-x-1/2" />
+                  </motion.div>
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="mt-8 text-2xl font-bold text-white animate-pulse"
+                  >
+                    KETUK UNTUK BUKA!
+                  </motion.p>
+                </motion.div>
               ) : (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -716,7 +616,6 @@ export default function App() {
                     onClick={() => {
                       setIsAuthenticated(false);
                       setIsBoxOpen(false);
-                      setIsScratched(false);
                       setCurrentUser(null);
                       setUsername('');
                       setPassword('');

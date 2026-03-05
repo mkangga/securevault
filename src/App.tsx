@@ -550,7 +550,7 @@ export default function App() {
                                 });
                                 
                                 if (res.status === 404) {
-                                  alert('Endpoint debug tidak ditemukan. Harap redeploy aplikasi Anda.');
+                                  alert('Endpoint debug tidak ditemukan (404). Harap redeploy aplikasi Anda.');
                                   return;
                                 }
 
@@ -559,10 +559,11 @@ export default function App() {
                                   const data = JSON.parse(text);
                                   alert(JSON.stringify(data, null, 2));
                                 } catch (e) {
-                                  alert('Respon bukan JSON (mungkin error server/HTML): ' + text.substring(0, 100));
+                                  console.error('Non-JSON response:', text);
+                                  alert(`Error ${res.status}: Respon bukan JSON.\n\nIsi (awal): ${text.substring(0, 200)}`);
                                 }
                               } catch(e: any) {
-                                alert('Debug failed: ' + e.message);
+                                alert('Debug failed (Network/Client Error): ' + e.message);
                               }
                             }}
                             className="w-full text-[10px] text-blue-400/50 hover:text-blue-400 transition-colors flex items-center justify-center gap-1"

@@ -13,13 +13,26 @@ app.use(express.json());
 // Initialize Database Connection Pool
 // We use a connection pool to manage multiple concurrent requests efficiently.
 // The connection string comes from the environment variable DATABASE_URL.
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+let pool: Pool;
+
+if (!process.env.DATABASE_URL) {
+  console.error('CRITICAL: DATABASE_URL is missing! Database features will not work.');
+  // Create a dummy pool that always fails gracefully
+  pool = {
+    query: async () => { throw new Error('Database not configured (missing DATABASE_URL)'); },
+    connect: async () => { throw new Error('Database not configured (missing DATABASE_URL)'); },
+  } as any;
+} else {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+}
 
 // Create Users Table if it doesn't exist
 const initDb = async () => {
+  if (!process.env.DATABASE_URL) return;
+  
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (

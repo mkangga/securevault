@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, Loader2, KeyRound, Sparkles, ExternalLink, Settings, Eye, EyeOff, Trash2, Edit2, Check, X } from 'lucide-react';
 
 // Components
@@ -82,6 +82,22 @@ export default function App() {
 
   // Data Persistence
   const [users, setUsers] = useState<User[]>([]);
+
+  // Backend Status
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  useEffect(() => {
+    // Check if backend is reachable
+    fetch('/api/health')
+      .then(res => {
+        if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+          setBackendStatus('connected');
+        } else {
+          setBackendStatus('disconnected');
+        }
+      })
+      .catch(() => setBackendStatus('disconnected'));
+  }, []);
 
   // Fetch users when admin is authenticated
   useEffect(() => {
@@ -310,12 +326,6 @@ export default function App() {
       </div>
 
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
-        {backendStatus === 'disconnected' && (
-          <div className="absolute top-0 left-0 w-full bg-red-600/90 text-white text-xs py-2 px-4 text-center z-50 backdrop-blur-sm">
-            ⚠️ <strong>SERVER ERROR:</strong> Backend tidak terhubung. Aplikasi berjalan dalam Mode Statis (Fitur Database Mati).
-            <br/>Pastikan Anda mendeploy <code>server.ts</code> (Node.js), bukan hanya Frontend statis.
-          </div>
-        )}
         <AnimatePresence mode="wait">
           {!isAuthenticated ? (
             <motion.div

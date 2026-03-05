@@ -230,7 +230,7 @@ export default function App() {
         });
         const data = await res.json();
         if (res.ok) {
-          setAdminMsg(`User ${newUsername} berhasil dibuat!`);
+          setAdminMsg(data.message); // Show server message directly
           // Reset form
           setNewUsername('');
           setNewPassword('');

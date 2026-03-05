@@ -142,6 +142,8 @@ app.post('/api/register', async (req, res) => {
     const msg = message || '';
     const theme = theme_id || 'default';
     
+    console.log('EXECUTING INSERT:', { username, link, msg, theme });
+
     await pool.query(
       'INSERT INTO users (username, password_hash, gift_link, plain_password, message, theme_id) VALUES ($1, $2, $3, $4, $5, $6)', 
       [username, hash, link, password, msg, theme]
@@ -150,7 +152,10 @@ app.post('/api/register', async (req, res) => {
     // Artificial delay for security feel
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    return res.json({ success: true, message: 'Registration successful' });
+    return res.json({ 
+      success: true, 
+      message: `User created! Msg: ${msg.substring(0,5)}..., Theme: ${theme}` 
+    });
   } catch (error) {
     console.error('Registration error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });

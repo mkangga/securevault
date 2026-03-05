@@ -537,6 +537,29 @@ export default function App() {
                             Fix Database Structure
                           </button>
                         </div>
+                        
+                        <div className="mt-2">
+                          <button 
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch('/api/debug/status', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ admin_secret: adminPin }),
+                                });
+                                const data = await res.json();
+                                alert(JSON.stringify(data, null, 2));
+                              } catch(e) {
+                                alert('Debug failed');
+                              }
+                            }}
+                            className="w-full text-[10px] text-blue-400/50 hover:text-blue-400 transition-colors flex items-center justify-center gap-1"
+                          >
+                            <Settings className="w-3 h-3" />
+                            Check DB Connection
+                          </button>
+                        </div>
                       </div>
                     )}
 

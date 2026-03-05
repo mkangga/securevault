@@ -60,6 +60,44 @@ const MAX_ATTEMPTS = 5;
 
 // API Routes
 
+// Debug Endpoint (Admin Only)
+app.post('/api/debug/status', async (req, res) => {
+  const { admin_secret } = req.body;
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret !== validSecret) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    // Check DB Connection Info
+    const dbInfo = await pool.query('SELECT current_database(), inet_server_addr(), version()');
+    
+    // Check Table Schema
+    const schemaInfo = await pool.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'users'
+    `);
+
+    // Check Recent Data (Raw)
+    const recentData = await pool.query('SELECT id, username, message, theme_id FROM users ORDER BY created_at DESC LIMIT 5');
+
+    return res.json({
+      success: true,
+      database: dbInfo.rows[0],
+      schema: schemaInfo.rows,
+      recent_data: recentData.rows,
+      env_check: {
+        has_db_url: !!process.env.DATABASE_URL,
+        node_env: process.env.NODE_ENV
+      }
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Manual Migration Endpoint (Admin Only)
 app.post('/api/admin/migrate', async (req, res) => {
   const { admin_secret } = req.body;

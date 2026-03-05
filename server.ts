@@ -73,6 +73,16 @@ const MAX_ATTEMPTS = 5;
 
 // API Routes
 
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    db_connected: !!process.env.DATABASE_URL
+  });
+});
+
 // Debug Endpoint (Admin Only)
 app.post('/api/debug/status', async (req, res) => {
   const { admin_secret } = req.body;
@@ -195,17 +205,23 @@ app.post('/api/register', async (req, res) => {
     
     console.log('EXECUTING INSERT:', { username, link, msg, theme });
 
-    await pool.query(
-      'INSERT INTO users (username, password_hash, gift_link, plain_password, message, theme_id) VALUES ($1, $2, $3, $4, $5, $6)', 
-      [username, hash, link, password, msg, theme]
-    );
+    // Explicitly listing columns to avoid ambiguity
+    const queryText = `
+      INSERT INTO users (username, password_hash, gift_link, plain_password, message, theme_id) 
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, username, message, theme_id
+    `;
+    
+    const insertResult = await pool.query(queryText, [username, hash, link, password, msg, theme]);
+    console.log('INSERT RESULT:', insertResult.rows[0]);
 
     // Artificial delay for security feel
     await new Promise(resolve => setTimeout(resolve, 800));
 
     return res.json({ 
       success: true, 
-      message: `User created! Msg: ${msg.substring(0,5)}..., Theme: ${theme}` 
+      message: `User created! Msg: ${msg.substring(0,5)}..., Theme: ${theme}`,
+      debug_data: insertResult.rows[0]
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -250,12 +266,19 @@ app.post('/api/admin/update-user', async (req, res) => {
     const msg = message || '';
     const theme = theme_id || 'default';
 
-    await pool.query(
-      'UPDATE users SET username = $1, password_hash = $2, plain_password = $3, gift_link = $4, message = $5, theme_id = $6 WHERE username = $7',
-      [username, hash, password, gift_link, msg, theme, original_username]
-    );
+    console.log('EXECUTING UPDATE:', { original_username, username, msg, theme });
 
-    return res.json({ success: true, message: 'User updated successfully' });
+    const updateQuery = `
+      UPDATE users 
+      SET username = $1, password_hash = $2, plain_password = $3, gift_link = $4, message = $5, theme_id = $6 
+      WHERE username = $7
+      RETURNING id, username, message, theme_id
+    `;
+
+    const updateResult = await pool.query(updateQuery, [username, hash, password, gift_link, msg, theme, original_username]);
+    console.log('UPDATE RESULT:', updateResult.rows[0]);
+
+    return res.json({ success: true, message: 'User updated successfully', debug_data: updateResult.rows[0] });
   } catch (error) {
     console.error('Update user error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });

@@ -310,6 +310,12 @@ export default function App() {
       </div>
 
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        {backendStatus === 'disconnected' && (
+          <div className="absolute top-0 left-0 w-full bg-red-600/90 text-white text-xs py-2 px-4 text-center z-50 backdrop-blur-sm">
+            ⚠️ <strong>SERVER ERROR:</strong> Backend tidak terhubung. Aplikasi berjalan dalam Mode Statis (Fitur Database Mati).
+            <br/>Pastikan Anda mendeploy <code>server.ts</code> (Node.js), bukan hanya Frontend statis.
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {!isAuthenticated ? (
             <motion.div

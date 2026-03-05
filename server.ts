@@ -60,6 +60,38 @@ const MAX_ATTEMPTS = 5;
 
 // API Routes
 
+// Manual Migration Endpoint (Admin Only)
+app.post('/api/admin/migrate', async (req, res) => {
+  const { admin_secret } = req.body;
+  const validSecret = process.env.ADMIN_SECRET || 'rahasia123';
+  
+  if (admin_secret !== validSecret) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    // Force add columns
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS message TEXT`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_id TEXT DEFAULT 'default'`);
+    
+    // Check columns
+    const result = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users'
+    `);
+    
+    return res.json({ 
+      success: true, 
+      message: 'Migration run successfully', 
+      columns: result.rows.map(r => r.column_name) 
+    });
+  } catch (error: any) {
+    console.error('Migration error:', error);
+    return res.status(500).json({ success: false, message: 'Migration failed: ' + error.message });
+  }
+});
+
 // Verify Admin Secret Endpoint
 app.post('/api/verify-admin', (req, res) => {
   const { admin_secret } = req.body;

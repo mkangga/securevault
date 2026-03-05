@@ -512,6 +512,31 @@ export default function App() {
                         </div>
 
                         {adminMsg && <div className="text-xs text-center text-white bg-green-500/20 p-2 rounded">{adminMsg}</div>}
+                        
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                          <button 
+                            type="button"
+                            onClick={async () => {
+                              if(window.confirm('Jalankan perbaikan database? Ini akan menambahkan kolom yang hilang.')) {
+                                try {
+                                  const res = await fetch('/api/admin/migrate', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ admin_secret: adminPin }),
+                                  });
+                                  const data = await res.json();
+                                  setAdminMsg(data.message + (data.columns ? ` (Cols: ${data.columns.join(', ')})` : ''));
+                                } catch(e) {
+                                  setAdminMsg('Gagal menjalankan migrasi');
+                                }
+                              }
+                            }}
+                            className="w-full text-[10px] text-yellow-500/50 hover:text-yellow-500 transition-colors flex items-center justify-center gap-1"
+                          >
+                            <Settings className="w-3 h-3" />
+                            Fix Database Structure
+                          </button>
+                        </div>
                       </div>
                     )}
 
